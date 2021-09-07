@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "modid",
+  "version": "${version}",
+
+  "name": "NFTMod",
+  "description": "Server side interaction with Polygon NFT 'Cool Chunk Collection'",
+  "authors": [
+    "Daniel Wart"
+  ],
+  "contact": {
+    "homepage": "tba",
+    "sources": "tba"
+  },
+
+  "license": "tba",
+  "icon": "assets/modid/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.fabricmc.example.NFTMod"
+    ]
+  },
+
+  "depends": {
+    "fabricloader": ">=0.11.3",
+    "fabric": "*",
+    "minecraft": "1.17.x",
+    "java": ">=16"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}

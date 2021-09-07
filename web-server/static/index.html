@@ -1,0 +1,86 @@
+Hello!
+
+<input type="button" id="button_setState" value="Set State">
+<input type="field" id="state">
+
+<input type="field" id="token_id">
+<input type="button" id="button_getState" value="Get State">
+<div>
+    <code id="result">TEST</code>
+
+<script type="module">
+    const NUM_VOXELS = (16 * 16 * 256);
+    import {ethers} from  "./ethers-5.1.esm.min.js";
+    // const NFTAddress = "0x1b12EB617986DD5e074155e3927E30eBda661D91";
+    const NFTAddress = "0xa0DA547263118039BD43E03B5d183416Dc2c1B3C";
+    const NFTAbi = await(await fetch("/NFTAbi.json")).json();
+    const etherscan_key = "";
+
+
+    await window.ethereum.request({method:'eth_requestAccounts'});
+
+    const signer = (new ethers.providers.Web3Provider(window.ethereum)).getSigner()
+
+    let contract = new ethers.Contract(NFTAddress, NFTAbi, signer);
+
+    let contract_interface = new ethers.utils.Interface(NFTAbi);
+
+    async function setState() {
+        let state = new Array(2*NUM_VOXELS/32).fill(document.getElementById("state").value);
+        console.log("start");
+        contract.set_state(document.getElementById("token_id").value, state);
+        console.log("end");
+
+    }
+
+
+    async function getState() {
+        console.log("start");
+        let blockchain_chunk_hash = await contract.chunk_state_hash(document.getElementById("token_id").value);
+        console.log("end");
+        let url = "https://api-testnet.polygonscan.com/api" +
+                    "?module=account" +
+                    "&action=txlist" +
+                    "&address=" + NFTAddress +
+                    "&startblock=0" +
+                    "&endblock=99999999" +
+                    "&sort=desc"+
+                    "&apikey=" + etherscan_key
+        let request = new XMLHttpRequest();
+        request.open("GET", url);
+        request.responseType = "json";
+        request.onload = function (error){
+            console.log(request.response);
+            let results = request.response.result;
+            for(var i = 0; i < results.length; i++){
+                if(results[i].isError === "0" && results[i].contractAddress === ""){
+                    let transaction = contract_interface.parseTransaction({data:results[i].input});
+                    if (transaction.name === "set_state"
+                        && transaction.args[0].eq(ethers.BigNumber.from(document.getElementById("token_id").value))){
+
+                        let state = "0x" + results[i].input.substring(2+(4+32)*2); //0x + 4 byte function signature + first argument
+
+                        let parameter_chunk_hash = ethers.utils.keccak256(state);
+
+                        console.log(state);
+                        console.log(parameter_chunk_hash);
+                        console.log(blockchain_chunk_hash);
+
+                        if(blockchain_chunk_hash === parameter_chunk_hash){
+                            console.log("hit!");
+                            document.getElementById("result").innerText +="\n" + transaction.args[1];
+                            break;
+                        }
+                    }
+                }
+            }
+
+        }
+        request.send();
+    }
+
+
+    document.getElementById("button_setState").addEventListener("click",setState)
+    document.getElementById("button_getState").addEventListener("click",getState)
+
+</script>
