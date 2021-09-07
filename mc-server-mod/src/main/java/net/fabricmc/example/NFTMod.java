@@ -91,7 +91,7 @@ public class NFTMod implements ModInitializer {
 
 
 		try {
-			API_KEY = Files.readString(Path.of("api.secret"));
+			API_KEY = Files.readString(Path.of("key.secret"));
 		} catch (IOException e) {
 			System.out.println("Failed to load API key with error: " + e);
 		}
@@ -101,15 +101,11 @@ public class NFTMod implements ModInitializer {
 //			System.out.printf("i: %d, block: %s%n", i,Registry.BLOCK.get(i) );
 			register_block((byte)i, Registry.BLOCK.get(i));
 		}
-		register_block(Byte.MAX_VALUE, null); //Unknown type, don't fill
-
-
+		register_block((short) 0xFFFF, null); //Unknown type, don't fill
 		CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
 			dispatcher.register(literal("set_state").executes(this::set_state));
 			dispatcher.register(literal("grab_chunk").executes(this::grab_chunk));
 			dispatcher.register(literal("get_state").executes(this::get_state));
-
-
 		});
 
 	}
@@ -283,25 +279,30 @@ public class NFTMod implements ModInitializer {
 
 
 		HttpClient client = HttpClient.newHttpClient();
-		HttpRequest request = HttpRequest.newBuilder()
-				.uri(URI.create("https://polygon-mumbai.g.alchemy.com/v2/nmxTHZOjOwOXa50nzDReDCdZ6hbx2RWL"))
-				.POST(
-						HttpRequest.BodyPublishers.ofString(String.format("""
-								{
-								  "jsonrpc": "2.0",
-								  "method": "eth_call",
-								  "params":
-								  [
-								    {
-								      "to": "%s",
-								      "data": "%s"
-								    },
-								    "latest"
-								  ],
-								  "id":1
-								}""",NFT_ADDRESS,data))
-				)
-				.build();
+		HttpRequest request = null;
+		try {
+			request = HttpRequest.newBuilder()
+					.uri(URI.create(Files.readString(Path.of("api.secret"))))
+					.POST(
+							HttpRequest.BodyPublishers.ofString(String.format("""
+									{
+									  "jsonrpc": "2.0",
+									  "method": "eth_call",
+									  "params":
+									  [
+										{
+										  "to": "%s",
+										  "data": "%s"
+										},
+										"latest"
+									  ],
+									  "id":1
+									}""",NFT_ADDRESS,data))
+					)
+					.build();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
 				.thenApply(HttpResponse::body)
 				.thenAccept((response)->{
@@ -317,7 +318,6 @@ public class NFTMod implements ModInitializer {
 								.thenApply(HttpResponse::body)
 								.thenAccept((polygon_response) ->{
 									try {
-//										System.out.println("polygon_response: " + polygon_response);
 										PolygonResponse polygonResponse = mapper.readValue(polygon_response, PolygonResponse.class);
 										if(polygonResponse.result == null){
 											return;
@@ -350,33 +350,13 @@ public class NFTMod implements ModInitializer {
 													for (int x = 0; x < 16; x++) {
 														for (int z = 0; z < 16; z++) {
 															for (int y = 0; y < 256; y++) {
-//																byte block_index = 5;
 																short block_index = chunk_data[current_iteration];
-//																byte block_index = (byte) (x*y*z);
-//																System.out.println("Block:" + byte_to_block.get(block_index));
 																if(short_to_block.get(block_index) != null){
-//																	System.out.print(decodedBytes[x*y*z] + ", ");
 																	BlockState blockState = short_to_block.get(block_index).getDefaultState();
-//																	BlockState blockState = Blocks.DIAMOND_BLOCK.getDefaultState();
 																	BlockPos blockPos = startBlockPos.add(x,y,z);
-//																	BlockEntity blockEntity = world.getBlockEntity(blockPos);
-//																	Clearable.clear(blockEntity);
-//																	if(!world.canSetBlock(blockPos)){
-//																		System.out.println("can't set block");
-//																	}
-																	boolean set_block_result = world.setBlockState(blockPos, blockState, Block.NOTIFY_ALL);
-//																	if(!set_block_result){
-//																		System.out.println(String.format("Failed at %d %d %d ",x,y,z));
-//																		y--;
-//																		if (!world.breakBlock(blockPos,false)){
-//																			try {
-//																				Thread.sleep(100);
-//																			} catch (InterruptedException e) {
-//																				e.printStackTrace();
-//																			}
-//																		}
-//
-//																	}
+
+																	world.setBlockState(blockPos, blockState, Block.NOTIFY_ALL);
+
 																}
 																current_iteration++;
 															}
